@@ -3,7 +3,10 @@
   <head>
     <meta charset="utf-8">
     <script src="./lodash.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+    <script src = "https://vuejs.org/js/vue.min.js"></script>
+    <script>
+        Vue.config.devtools = true
+    </script>
     <script src="./airtable.browser.js"></script>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
     <link rel="stylesheet" href="./form.css">
@@ -45,17 +48,16 @@
           </div>
       </div>
     </div> <!-- end class static-->
-    
       <div class= "propsals" id ="proposals">
+        <result v-if="status" v-bind:caption= "caption" v-bind:sucess= "sucess" v-bind:failed = "error" v-on:close-modal="status= false"></result>
         <proposal v-for = "i in number" :key= "i" v-bind:title = "'Đề  Xuất ' + i" v-on:pass-data-to-parent= "addData"></proposal>
-      
-
         <div class="row" style="margin-top:20px">
           <button type= "button" class="btn btn-warning right" v-on:click = "submitToAirtable">Đề Xuất</button>
           <button type= "button" class="btn btn-warning right" v-on:click = "addNumber" style = "margin-left: 20px">Thêm Đề Xuất </button>
         </div>
       </div>
     </div>
+
     <script type="x-template" id="proposal">
       <div class= "proposal">
         <div class = "row">
@@ -67,10 +69,10 @@
                   <div class="input-group-prepend">
                     <label class="input-group-text" for="projects">Dự Án</label>
                   </div>
-                  <select class="custom-select" v-model = "selectedProject.id" >
+                  <select class="custom-select" v-model = "selectedProject.id" v-on:change ="selectProject" >
                     <option selected>Choose...</option>
 
-                      <option v-for= "html in htmlProject" v-on:click ="selectProject" :value = "html.id" :key= "html.id">
+                      <option v-for= "html in htmlProject"  :value = "html.id" :key= "html.id">
                         {{html.text}}
                       </option>
                   </select>
@@ -82,9 +84,9 @@
                   <div class="input-group-prepend">
                     <label class="input-group-text" for="supiler">Nhà Cung</label>
                   </div>
-                  <select class="custom-select" v-model = "selectedSuplier.text">
+                  <select class="custom-select" v-model = "selectedSuplier.text" v-on:change="selectSuplier">
                     <option selected>Choose...</option>
-                    <option v-for= "html in htmlSuplier" v-on:click="selectSuplier" :value = "html" :key= "html">
+                    <option v-for= "html in htmlSuplier"  :value = "html" :key= "html">
                       {{html}}
                     </option>
                   </select>
@@ -96,14 +98,15 @@
                   <div class="input-group-prepend">
                     <label class="input-group-text" for="cases">Hạng Mục Chi</label>
                   </div>
-                  <select class="custom-select" v-model= "selectedCase.id">
+                  <select class="custom-select" v-model= "selectedCase.id" v-on:change= "selectCase">
                     <option selected>Choose...</option>
-                    <option v-for= "html in htmlCase" :value= "html.id" :key= "html.text" v-on:click= "selectCase">{{html.text}}</option>
+                    <option v-for= "html in htmlCase" :value= "html.id" :key= "html.text">{{html.text}}</option>
                   </select>
               </div>
             </div>
           </div>
   </script>
+    <div class="loading" id="loading">Loading&#8230;</div>
     <script src="./fetchdata.js"></script>
   </body>
 </html>

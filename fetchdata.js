@@ -12,7 +12,10 @@ var projectsAll = [];
 var accountsAll = [];
 
 
-function submit(name,caseId,projectId) {
+
+
+
+function submit(name,caseId,projectId,Ins) {
   base('Đề xuất').create({
     "Người đề xuất": name,
     "Hạng mục chi": [
@@ -22,8 +25,13 @@ function submit(name,caseId,projectId) {
       projectId
     ]
   }, function(err, record) {
-      if (err) { console.error(err); return; }
-      console.log('post sucess',record.getId());
+      if (err || typeof record.getId() === 'undefined') { 
+        console.error(err);
+        Ins.failed();
+      } else {
+        Ins.sucessed();
+      }
+      console.log(record.getId())
   });
 }
 
@@ -90,7 +98,7 @@ function listCases(projectName) {
 
   }, function done(err) {
       if (err) { console.error(err); return; };
-      actionOnReady()
+      actionOnReady();
   });
 
 }
@@ -112,7 +120,7 @@ function buildHtml(data,property) {
   })
 }
 
-function buildFilterObject(recordsOfledger) {
+  function buildFilterObject(recordsOfledger) {
   let rs = Object.assign([]);
   rs['noSuplier'] = [];
   recordsOfledger.map(record => {
@@ -160,7 +168,29 @@ function actionOnReady() {
   // let namesOfProject = getAtrribute(projectsAll,'Name');
   // let infoOfLedger = getAtrribute(casesAll,'Info');
   //console.log(buildSelectHtml(projectsAll,'Name'));
-  Vue.config.devtools = true;
+  Vue.component('result',{
+    props: ['caption','sucess','failed'], // type css : alert alert-primary or alert dangerous, stt = true || false
+    template: `
+    <div class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Đề Xuất</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="alert" v-bind:class = "{'alert-primary':sucess,'alert-danger':failed}">{{caption}}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-warning" v-on:click="$emit('close-modal')">Trở Về</button>
+        </div>
+      </div>
+    </div>
+  </div>
+    `
+  })
 
   Vue.component('proposal',{
     props:['title'],
@@ -192,6 +222,7 @@ function actionOnReady() {
     methods: {
 
       decreaseProposal: function () {
+        if (proposals.number ==1) return;
         proposals.number -= 1;
       },
 
@@ -211,6 +242,7 @@ function actionOnReady() {
       },
 
       selectProject : function() {
+        //console.log('runON')
         let _seletedProjectId = this.selectedProject.id
         let lstLedgerRecord = matchingLedger(_seletedProjectId);
         this.recordAfterFilterProject = lstLedgerRecord;
@@ -221,6 +253,7 @@ function actionOnReady() {
           // console.log('recors',this.recordAfterFilterProject)
           let _keys = Object.keys(this.recordsAfterFilterProject);
           this.htmlSuplier = _keys.length !== 0 ? _keys : ['Khong Co Nha Cung'];
+          //console.log(this.htmlSuplier);
           //console.log("values",Object.keys(this.recordsAfterFilterProject) == [] );
         } 
       }
@@ -231,7 +264,13 @@ function actionOnReady() {
     el: "#proposals",
     data : {
       number : 1,
-      data: Object.assign([])
+      data: Object.assign([]),
+      resultSubmit: '',
+      status: false,
+      caption: '',
+      sucess : false,
+      error : false,
+
     },
     methods: {
       addNumber: function() {
@@ -245,23 +284,43 @@ function actionOnReady() {
       },
 
       submitToAirtable(){
-        for(let i= 0; i < this.number; i++) {
-        let _projectId =  this.data[i].projectId;
-        let _caseId = this.data[i].caseId;
-        if(_projectId == null || _caseId == null) {
-          this.failMessage = 'Khong the Post';
+        document.getElementById("loading").style.display = "block";
+        let data = [];
+        try {
+          for(let i= 0; i < this.number; i++) {
+            let _projectId =  this.data[i].projectId;
+            let _caseId = this.data[i].caseId;
+            if(_projectId == null || _caseId == null) {
+              this.failed();
+              break;
+            }
+            data[i] = {projectId:_projectId, caseId : _caseId};
+            }
+        } catch (error) {
+          this.failed();
           return;
         }
-        submit('Quyên', _caseId, _projectId);
-        }
+        data.map(record => submit('Quyên', record.caseId, record.projectId,this))
       },
 
-      callEvent: function(){
-        console.log('run')
+      failed: function(){
+        document.getElementById("loading").style.display = "none";
+        this.error= true;
+        this.sucess = false;
+        this.caption = 'Gửi Không Thành Công! Hãy Xem lại thông tin!';
+        this.status= true
+      },
+
+      sucessed: function(){
+        document.getElementById("loading").style.display = "none";
+        this.caption = 'Gửi Thành Công';
+        this.sucess = true;
+        this.error = false;
+        this.status = true;
       }
     }
   });
-
+  Vue.config.devtools = true;
 }
 
 
