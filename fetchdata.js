@@ -11,6 +11,7 @@ var casesAll = [];
 var projectsAll = [];
 var accountsAll = [];
 var loginUrl = 'https://wt-986822ae0ddf95aaa96a831043dc5c1e-0.sandbox.auth0-extend.com/restApi/login';
+var addUserUrl = 'https://wt-986822ae0ddf95aaa96a831043dc5c1e-0.sandbox.auth0-extend.com/restApi/add-user'
 var nameProposaler = undefined;
 
 
@@ -194,31 +195,53 @@ function actionOnReady() {
         loading: false,
         loginFailed: false,
         username: '',
-        password: ''
+        password: '',
+        addUser : false,
+        pwdAdmin: '',
+        btnText: 'Đăng Nhập'
       }
     },
     methods : {
-      login: function() {
+      submit: function() {
         this.loading= true;
         let username = this.username;
         let password = this.password;
-        //console.log(username +' ' + password)
-        let dataToPost  = {"name": username, "password": password};
-        //console.log(dataToPost)
-        postData(loginUrl,dataToPost)
-          .then(data => {
-            this.loading = false;
-            if ( data.status == 500) {
-              this.loginFailed = true;
-            } else {
-              let _name = data.json();
-              _name.then(
-                data => this.$emit('login-sucess', data.name)
-              );
-              
-            }
-          }) // JSON-string from `response.json()` call
-          .catch(error => console.error(error));
+        if (this.addUser === true) {
+          let pwdAdmin = this.pwdAdmin
+          if (username == '' || password == '' || pwdAdmin == '') {this.loading= false; this.loginFailed= true; return;}
+          let dataToPost  = {"name": username, "password": password, "pwdAdmin": pwdAdmin};
+          postData(addUserUrl,dataToPost)
+            .then(data => {
+              this.loading = false;
+              if ( data.status == 500) {
+                this.loginFailed = true;
+              } else {
+                if (data.status ==200){
+                  this.addUser = false;
+                  this.submit();
+                }
+              }
+            }) // JSON-string from `response.json()` call
+            .catch(error => console.error(error));
+        } else {
+          if (username == '' || password == '') { this.loading= false; this.loginFailed= true; return;}
+          let dataToPost  = {"name": username, "password": password};
+          postData(loginUrl,dataToPost)
+            .then(data => {
+              this.loading = false;
+              if ( data.status == 500) {
+                this.loginFailed = true;
+              } else {
+                let _name = data.json();
+                _name.then(
+                  data => this.$emit('login-sucess', data.name)
+                );
+                
+              }
+            }) // JSON-string from `response.json()` call
+            .catch(error => console.error(error));
+        }
+        
       }
     },
     template: `
@@ -230,16 +253,20 @@ function actionOnReady() {
           </div>
           <div class="modal-body">
             <div class="input-group mb-3">
-            <input type="text" class="form-control" placeholder="Username" v-model = "username" aria-label="Username" aria-describedby="basic-addon1">
+              <input type="text" class="form-control" placeholder="Username" v-model = "username" aria-label="Username" aria-describedby="basic-addon1">
             </div>
             <div class="input-group mb-3">
-            <input type="password" class="form-control" placeholder="Password" v-model = "password" aria-label="Password" aria-describedby="basic-addon1">
+              <input type="password" class="form-control" placeholder="Password" v-model = "password" aria-label="Password" aria-describedby="basic-addon1">
+            </div>
+            <div class="input-group mb-3" v-if= "addUser">
+              <input type="password" class="form-control" placeholder="Password of admin to add user" v-model = "pwdAdmin" aria-label="Password" aria-describedby="basic-addon1">
             </div>
             <div v-if="loading" style="text-align: center"><img src= './loading.gif' style="width:20%"/></div>
-            <p class= "text-danger" v-if="loginFailed">Đăng  Nhập không thành công, Vui lòng kiểm tra lại thông tin đăng nhập</p>
+            <p class= "text-danger" v-if="loginFailed">Thông tin không chính xác, Vui lòng kiểm tra lại thông tin.</p>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-warning" v-on:click="login">Đăng Nhập</button>
+            <button type="button" class="btn btn-warning" v-on:click="submit">Submit</button>
+            <button type="button" class="btn btn-warning" v-on:click="addUser= !addUser">Thêm User</button>
           </div>
         </div>
       </div>
@@ -393,7 +420,7 @@ function actionOnReady() {
           this.failed();
           return;
         }
-        _data.map(record => submit('nameProposaler', record.caseId, record.projectId,this))
+        _data.map(record => submit(nameProposaler, record.caseId, record.projectId,this))
       },
 
       failed: function(){
