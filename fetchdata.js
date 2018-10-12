@@ -10,6 +10,8 @@ var base  = new Airtable({
 var casesAll = [];
 var projectsAll = [];
 var accountsAll = [];
+var loginUrl = 'https://wt-986822ae0ddf95aaa96a831043dc5c1e-0.sandbox.auth0-extend.com/restApi/login';
+var nameProposaler = undefined;
 
 
 
@@ -25,14 +27,31 @@ function submit(name,caseId,projectId,Ins) {
       projectId
     ]
   }, function(err, record) {
-      if (err || typeof record.getId() === 'undefined') { 
-        console.error(err);
+      if (err || typeof record === 'undefined') { 
+        //console.error(err);
         Ins.failed();
       } else {
         Ins.sucessed();
       }
-      console.log(record.getId())
   });
+}
+
+function postData(url = ``, data = {}) {
+  // Default options are marked with *
+    return fetch(url, {
+        method: "POST", // *GET, POST, PUT, DELETE, etc.
+        mode: "cors", // no-cors, cors, *same-origin
+        cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+        credentials: "same-origin", // include, same-origin, *omit
+        headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            // "Content-Type": "application/x-www-form-urlencoded",
+        },
+        redirect: "follow", // manual, *follow, error
+        referrer: "no-referrer", // no-referrer, *client
+        body: JSON.stringify(data), // body data type must match "Content-Type" header
+    })
+    .then(response => response); // parses response to JSON
 }
 
 listAccount()
@@ -168,6 +187,66 @@ function actionOnReady() {
   // let namesOfProject = getAtrribute(projectsAll,'Name');
   // let infoOfLedger = getAtrribute(casesAll,'Info');
   //console.log(buildSelectHtml(projectsAll,'Name'));
+
+  Vue.component('login-form', {
+    data: function() {
+      return {
+        loading: false,
+        loginFailed: false,
+        username: '',
+        password: ''
+      }
+    },
+    methods : {
+      login: function() {
+        this.loading= true;
+        let username = this.username;
+        let password = this.password;
+        //console.log(username +' ' + password)
+        let dataToPost  = {"name": username, "password": password};
+        //console.log(dataToPost)
+        postData(loginUrl,dataToPost)
+          .then(data => {
+            this.loading = false;
+            if ( data.status == 500) {
+              this.loginFailed = true;
+            } else {
+              let _name = data.json();
+              _name.then(
+                data => this.$emit('login-sucess', data.name)
+              );
+              
+            }
+          }) // JSON-string from `response.json()` call
+          .catch(error => console.error(error));
+      }
+    },
+    template: `
+      <div class="modal" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Đăng Nhập</h5>
+          </div>
+          <div class="modal-body">
+            <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Username" v-model = "username" aria-label="Username" aria-describedby="basic-addon1">
+            </div>
+            <div class="input-group mb-3">
+            <input type="password" class="form-control" placeholder="Password" v-model = "password" aria-label="Password" aria-describedby="basic-addon1">
+            </div>
+            <div v-if="loading" style="text-align: center"><img src= './loading.gif' style="width:20%"/></div>
+            <p class= "text-danger" v-if="loginFailed">Đăng  Nhập không thành công, Vui lòng kiểm tra lại thông tin đăng nhập</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-warning" v-on:click="login">Đăng Nhập</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    `
+  });
+
   Vue.component('result',{
     props: ['caption','sucess','failed'], // type css : alert alert-primary or alert dangerous, stt = true || false
     template: `
@@ -176,9 +255,6 @@ function actionOnReady() {
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Đề Xuất</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
         </div>
         <div class="modal-body">
           <p class="alert" v-bind:class = "{'alert-primary':sucess,'alert-danger':failed}">{{caption}}</p>
@@ -190,6 +266,21 @@ function actionOnReady() {
     </div>
   </div>
     `
+  })
+
+  var  proposaler = new Vue({
+    el : "#proposaler",
+    data : {
+      name: undefined,
+      displayLoginForm : true,
+    },
+    methods : {
+      loginSucess: function(name) {
+        this.displayLoginForm = false;
+        this.name = name;
+        nameProposaler = name;
+      }
+    }
   })
 
   Vue.component('proposal',{
@@ -260,6 +351,8 @@ function actionOnReady() {
     }
   });
 
+
+
   var proposals = new Vue({
     el: "#proposals",
     data : {
@@ -285,7 +378,7 @@ function actionOnReady() {
 
       submitToAirtable(){
         document.getElementById("loading").style.display = "block";
-        let data = [];
+        let _data = [];
         try {
           for(let i= 0; i < this.number; i++) {
             let _projectId =  this.data[i].projectId;
@@ -294,13 +387,13 @@ function actionOnReady() {
               this.failed();
               break;
             }
-            data[i] = {projectId:_projectId, caseId : _caseId};
+            _data[i] = {projectId:_projectId, caseId : _caseId};
             }
         } catch (error) {
           this.failed();
           return;
         }
-        data.map(record => submit('Quyên', record.caseId, record.projectId,this))
+        _data.map(record => submit('nameProposaler', record.caseId, record.projectId,this))
       },
 
       failed: function(){
