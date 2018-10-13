@@ -7,15 +7,14 @@ var base  = new Airtable({
 }).base(
   'appTIRFofu4KqVvJY'
 )
-var casesAll = [];
-var projectsAll = [];
-var accountsAll = [];
+
+var proposaled = Object.assign([]);
+var casesAll = Object.assign([]);
+var projectsAll = Object.assign([]);
+var accountsAll = Object.assign([]);
 var loginUrl = 'https://wt-986822ae0ddf95aaa96a831043dc5c1e-0.sandbox.auth0-extend.com/restApi/login';
 var addUserUrl = 'https://wt-986822ae0ddf95aaa96a831043dc5c1e-0.sandbox.auth0-extend.com/restApi/add-user'
 var nameProposaler = undefined;
-
-
-
 
 
 function submit(name,caseId,projectId,Ins) {
@@ -32,7 +31,7 @@ function submit(name,caseId,projectId,Ins) {
         //console.error(err);
         Ins.failed();
       } else {
-        Ins.sucessed();
+        Ins.sucessed(caseId);
       }
   });
 }
@@ -55,7 +54,33 @@ function postData(url = ``, data = {}) {
     .then(response => response); // parses response to JSON
 }
 
-listAccount()
+listProposaled();
+function listProposaled() {
+  base('Đề xuất').select({
+    // Selecting the first 3 records in Grid view:
+    view: "Grid view"
+}).eachPage(function page(records, fetchNextPage) {
+    // This function (`page`) will get called for each page of records.
+
+    records.forEach(function(record) {
+      proposaled = proposaled.concat(record.get('Hạng mục chi'));
+
+    });
+
+    // To fetch the next page of records, call `fetchNextPage`.
+    // If there are more records, `page` will get called again.
+    // If there are no more records, `done` will get called.
+    fetchNextPage();
+
+}, function done(err) {
+    if (err) { console.error(err); return; };
+    proposaled = proposaled.filter(record => typeof record !== 'undefined');
+    console.log(proposaled);
+    listAccount()
+});
+
+}
+
 function listAccount() {
   base('Tài Khoản').select({
     view : "Full",
@@ -72,7 +97,6 @@ function listAccount() {
     listProjects()
 });
 }
-
 
 function listProjects() {
   base('Dự án').select({
@@ -140,7 +164,7 @@ function buildHtml(data,property) {
   })
 }
 
-  function buildFilterObject(recordsOfledger) {
+function buildFilterObject(recordsOfledger) {
   let rs = Object.assign([]);
   rs['noSuplier'] = [];
   recordsOfledger.map(record => {
@@ -354,8 +378,15 @@ function actionOnReady() {
         let _selectedSuplier = this.selectedSuplier.text;
         // console.log(this.recordsAfterFilterProject);
         let _listRecord = this.recordsAfterFilterProject[_selectedSuplier] || this.recordsAfterFilterProject['noSuplier'] ;
-        // console.log(_listRecord.length)
+        _listRecord.map(record => console.log(record.getId()));
         // console.log('records',this.recordsAfterFilterProject['ACB-Ván sàn Vinyl Triết'])
+        _listRecord = _listRecord.filter(record => { //remove all id that had in proposal table
+          let _id = record.getId();
+          if (proposaled.indexOf(_id) < 0) {
+            //console.log('removed',_id);
+            return record
+          }
+        });
         this.htmlCase = buildHtml(_listRecord,'Info');
       },
 
@@ -410,6 +441,7 @@ function actionOnReady() {
           for(let i= 0; i < this.number; i++) {
             let _projectId =  this.data[i].projectId;
             let _caseId = this.data[i].caseId;
+            _caseId = proposaled.indexOf(_caseId) > 0 ? null : _caseId;
             if(_projectId == null || _caseId == null) {
               this.failed();
               break;
@@ -431,8 +463,10 @@ function actionOnReady() {
         this.status= true
       },
 
-      sucessed: function(){
+      sucessed: function(_caseId) {
         document.getElementById("loading").style.display = "none";
+        //update Proposaled
+        proposaled = proposaled.concat([_caseId]);
         this.caption = 'Gửi Thành Công';
         this.sucess = true;
         this.error = false;
